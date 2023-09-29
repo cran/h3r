@@ -1,0 +1,283 @@
+
+# h3r
+
+**h3r** is an interface to
+[{h3lib}](https://github.com/SymbolixAU/h3lib), which is itself a
+wrapper around Uber’s [H3](https://h3geo.org/) library. See their
+[getting started](https://h3geo.org/docs/) guide for all the details.
+
+The wrappers are all vectorised, meaning each input can take a vector,
+and / or return a vector.
+
+e.g:
+
+``` r
+h3r::latLngToCell(
+  lat = c(-37.820197, -37.818476)
+  , lng = c(144.983324, 144.967354)
+  , resolution = c(1L, 14L)
+  )
+# [1] "81be7ffffffffff" "8ebe6356311035f"
+```
+
+Most of the [H3 API](https://h3geo.org/docs/api/indexing/) is included
+in this package as R functions. The only exceptions are
+
+- stringToH3
+- h3ToString
+- gridDisksUnsafe
+- cellToChildrenSize
+- uncompactCellsSize
+- maxPolygonToCellsSize
+- cellsToLinkedMultipolygon
+- destroyLInkedMultiPolygon
+
+However, these should all be accessible through the C API
+
+## Design Choices
+
+- There is no `h3` class, or nice printing, or any fancy sugar-coating
+  of what’s returned from the functions. I’ve kept the outputs as raw /
+  primitive as possible
+- All H3Indexes are returned as the String representation. If you want
+  the `H3Index` / `uint64_t` type you need to use the C / C++ functions
+  directly
+- We’re using the same code conventions as per the H3 API
+  - CamelCase function names (e.g. `latLngToCell`)
+  - lat/lng, rather than lat/lon or lon/lat
+- Functions which return a single coordinate pair for each input return
+  a `data.frame`
+
+``` r
+h3r::cellToLatLng(cell = c("8cbe63562a54bff","8cbe635631103ff"))
+#         lat      lng
+# 1 -37.82023 144.9832
+# 2 -37.81844 144.9674
+```
+
+- Functions which return a multiple coordinates for each input return a
+  list of `data.frames`
+
+``` r
+h3r::cellToBoundary(cell = c("8cbe63562a54bff","8cbe635631103ff"))
+# $`8cbe63562a54bff`
+#         lat      lng
+# 1 -37.82030 144.9833
+# 2 -37.82019 144.9833
+# 3 -37.82012 144.9832
+# 4 -37.82016 144.9831
+# 5 -37.82026 144.9831
+# 6 -37.82033 144.9832
+# 
+# $`8cbe635631103ff`
+#         lat      lng
+# 1 -37.81851 144.9675
+# 2 -37.81840 144.9675
+# 3 -37.81833 144.9674
+# 4 -37.81837 144.9673
+# 5 -37.81847 144.9673
+# 6 -37.81854 144.9674
+```
+
+## API
+
+To use the source C / C++ code in your own package you should only need
+to include `inst/include/h3rapi.h`
+
+## C API
+
+In `/inst/capi` you’ll find a demo package {h3rc}. This shows how to
+include / call the C code from {h3r} into another package.
+
+The main components you need to address are
+
+1.  DESCRIPTION
+2.  `src/init.c`
+3.  `src/myCode.c` - i.e., your own C code
+4.  `R/myRCode.R` - i.e., your own R code
+5.  Register the dynamic library
+
+------------------------------------------------------------------------
+
+### DESCRIPTION
+
+Depend & Link to {h3r}
+
+    Depends:
+      h3r
+    LinkingTo:
+      h3r
+
+### src/init.c
+
+Define the functions you want to import from {h3r}
+
+``` c
+SEXP (*h3rLatLngToCell)(SEXP,SEXP,SEXP);
+
+void R_init_h3rc(DllInfo *info)
+
+{
+  R_registerRoutines(info, NULL, callMethods, NULL, NULL);
+  R_useDynamicSymbols(info, FALSE);
+
+  /* Imports from h3r */
+  h3rLatLngToCell = (SEXP(*)(SEXP,SEXP,SEXP)) R_GetCCallable("h3r", "h3rLatLngToCell");
+}
+```
+
+### src/h3rc.c
+
+Include the “h3rapi.h” header, then you can call the functions you’ve
+registered in `src/init.c`
+
+``` c
+#include "h3rapi.h"
+
+SEXP h3rcLatLngToCell(SEXP lat, SEXP lng, SEXP res) {
+  return h3rLatLngToCell(lat, lng, res);
+}
+```
+
+### R/h3rr.R
+
+Call the function you’ve defined in `h3rc.c` from within an R function
+
+``` r
+#' @export
+ll2Cell <- function(lat, lon, res) {
+  .Call(h3rcLatLngToCell, lat, lon, res)
+}
+```
+
+### R/\<somewhere.R\>
+
+Register your dynamic routines. If using Roxygen to build and document
+your pacakge you can specify
+
+``` r
+#' @useDynLib h3rc, .registration = TRUE
+NULL
+```
+
+and it will be built and added to your NAMESPACE automatically
+
+## C++ API
+
+In `/inst/cppapi` you’ve find a demo package {h3rcpp}. This shows how to
+include / call the C++ code from {h3r} into another package.
+
+The main components you need to address are
+
+1.  DESCRIPTION
+2.  `src/myCode.cpp` - i.e., your own C++ code
+3.  `R/myRCode.R` - i.e., your own R code
+4.  Register the dynamic library
+
+The example package shows how to do this, and it’s very similar to the
+`C` exmple above. So I’m not going to repeate it.
+
+Instead I’m going to show you an example of how you might want to use it
+
+Consider the output of `cellToBoundary()`
+
+``` r
+h3r::cellToBoundary(cell = c("8cbe63562a54bff","8cbe635631103ff"))
+# $`8cbe63562a54bff`
+#         lat      lng
+# 1 -37.82030 144.9833
+# 2 -37.82019 144.9833
+# 3 -37.82012 144.9832
+# 4 -37.82016 144.9831
+# 5 -37.82026 144.9831
+# 6 -37.82033 144.9832
+# 
+# $`8cbe635631103ff`
+#         lat      lng
+# 1 -37.81851 144.9675
+# 2 -37.81840 144.9675
+# 3 -37.81833 144.9674
+# 4 -37.81837 144.9673
+# 5 -37.81847 144.9673
+# 6 -37.81854 144.9674
+```
+
+This gives a list of 2 elements, and each element contains lat/lng
+coordinates.
+
+You can use the C++ `h3r::cellToBoundary()` in your own workflow, and
+using other R packages that allow you to link to the source code.
+
+In this example I’m using `{geometries}` and `{sfheaders}` to convert to
+a valid `{sf}` object.
+
+The steps inside this function are:
+
+1.  `h3r::cellToBoundary` - get the boundaries of each cell
+2.  `geometries::collapse_list()` - makes a single list, with three
+    vectors
+
+- id
+- lat
+- lng
+
+3.  `sfheaders::sf_polygon()` - convert the result into an `sf` object
+
+``` r
+
+library(Rcpp)
+library(sf) ## for the `sf.print` method
+# Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
+
+cppFunction(
+  
+  depends = c("h3r", "geometries", "sfheaders")   # you need `sfheaders` installed
+  , includes = c(
+    '#include "geometries/utils/lists/collapse.hpp"'
+    , '#include "sfheaders/sf/sf.hpp"'
+    , '#include "h3rapi.h"'
+  )
+  
+  , code = '
+  
+    SEXP sfBoundary(Rcpp::StringVector cells) {
+      
+      R_xlen_t n = Rf_xlength(cells);  
+      
+      // convert to latLng boundaries
+      Rcpp::List boundaries = h3r::cellToBoundary(cells);
+      
+      // need to account for any pentagons 
+      Rcpp::IntegerVector n_pentagons = h3r::isPentagon(cells);
+      R_xlen_t n_pentagon = n_pentagons[0];
+      R_xlen_t row_count = (n_pentagon * 5) + ((n - n_pentagon) * 6);
+     
+      // _collapse_ the boundaries to a list of three vectors
+      // col0: id
+      // col1: lat
+      // col2: lng
+      Rcpp::List geometries = geometries::utils::collapse_list(boundaries, row_count);
+      
+      // the `sfheaders` api expects a data.frame or a matrix
+      Rcpp::DataFrame df = Rcpp::as< Rcpp::DataFrame >(geometries);
+
+      Rcpp::IntegerVector idCol = {0};
+      Rcpp::IntegerVector geometryCol = {1, 2};
+      
+      return sfheaders::api::sf_polygon(df, geometryCol, idCol, R_NilValue, "XY", false, true);
+
+    }
+  '
+)
+
+
+sfBoundary(cell = c("8cbe63562a54bff","8cbe635631103ff")) 
+# Simple feature collection with 2 features and 1 field
+# Geometry type: POLYGON
+# Dimension:     XY
+# Bounding box:  xmin: -37.82033 ymin: 144.9673 xmax: -37.81833 ymax: 144.9833
+# CRS:           NA
+#   id                       geometry
+# 1  1 POLYGON ((-37.8203 144.9833...
+# 2  2 POLYGON ((-37.81851 144.967...
+```
