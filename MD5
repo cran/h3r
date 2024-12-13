@@ -1,8 +1,8 @@
-87d1fc234ac798ce9a2767fb44934929 *DESCRIPTION
+a501568cd79d2e5a1264fd891cc1380f *DESCRIPTION
 62409b2b1c5176314d12b396ce17ee74 *LICENSE
 9abcf861a390f5a3b194cffd704f0ef0 *NAMESPACE
 8d7335b6c836c70439aa37f6a592b1cd *R/direcetedEdges.R
-5386794cf2833b539b1d9fd511cd2931 *R/h3r-package.R
+7b12d0e9a031d482c4dad1977aab3e7e *R/h3r-package.R
 0d6608d5f7c191c65bd1a85d03c797f4 *R/hierarchy.R
 02c36e9954bf1a6f3f25e21687827c6c *R/indexing.R
 6bafa90beb0a4d878b5501bfe4fe3246 *R/inspection.R
@@ -74,7 +74,7 @@ ba91c986d34563ccb79f457cf62ffc8e *man/isResClassIII.Rd
 eaa2c0e7b89aa5d89b5bfb1a78c6a821 *man/originToDirectedEdges.Rd
 1ce5f1f0eb27c288c49d699d548bc433 *man/polygonToCells.Rd
 936e1b7e34fb2bfb7fe5f03ab4e435ec *man/radsToDegs.Rd
-b66626fba9919f7d61dbc1bd9ae6d8ec *man/stations.Rd
+204bedbf291a9193b1172114a057e87d *man/stations.Rd
 73bb368d6465c8aa64c46fae6398a39d *man/uncompactCells.Rd
 afe9ae57e3361dabd885941fc9b37476 *man/vertexToLatLng.Rd
 3f03da795dd26373156bddc78d41e95d *src/Makevars
@@ -86,7 +86,7 @@ d5353e9c63d033cd291fdb4265bcb0ff *src/h3rHierarchy.c
 78f304af91dfa45f2062974e46753493 *src/h3rMiscellaneous.c
 4edac5c3fed825a42b32f7846191c90e *src/h3rRegions.c
 251a3d21d0ac9d37e9d391ea79eb84fb *src/h3rTraversal.c
-0880e9202a5d5158cffaada613e550bb *src/h3rUtils.c
+888d8ea4388423246e0c9bddf424f45d *src/h3rUtils.c
 63abbb1d3d7756ce11f0383b9cc0828d *src/h3rUtils.h
 090bd9929b7fce3e0033f959cdea741d *src/h3rVertexes.c
 eabc01d7a166a1cbb0522aaff8f321ec *src/init.c
